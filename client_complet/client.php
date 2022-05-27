@@ -23,15 +23,19 @@ while ($run) {
 
     switch ($line) {
         case 1:
-            manageAccount();
+            manageAccount($client);
             break;
         
         case 2:
-            echo $line;
+            $res = $client->request('GET', "https://approval-manager-dot-inf63app8.appspot.com/approvals/");
+            $array = json_decode($res->getBody());
+            foreach ($array as $approval) {
+                echo sprintf("\r\n[%s] Pret de %s € pour le compte de %s : %s",$approval->date, $approval->amount, $approval->lastname, $approval->response);
+            }
             break;
         
         case 3:
-            echo $line;
+            askLoan($client);
             break;
 
         case 0:
@@ -44,7 +48,7 @@ while ($run) {
     }
 }
 
-function manageAccount()
+function manageAccount(Client $client)
 {
     $run = true;
     while ($run) {
@@ -59,15 +63,19 @@ function manageAccount()
 
         switch ($line) {
             case 1:
-                echo $line;
+                addAccount($client);
                 break;
             
             case 2:
-                echo $line;
+                deleteAccount($client);
                 break;
             
             case 3:
-                echo $line;
+                $res = $client->request('GET', "https://account-manager-dot-inf63app8.appspot.com/accounts/");
+                $array = json_decode($res->getBody());
+                foreach ($array as $account) {
+                    echo sprintf("\r\nCompte de %s %s\r\nMontant : %s €\r\nRisque : %s\r\n\r\n", $account->lastname, $account->firstname, $account->account, $account->risk);
+                }
                 break;
 
             case 0:
@@ -80,13 +88,83 @@ function manageAccount()
         }
     }
 }
-/*
-$res = $client->request('GET', "https://vivetgravier-check-account.herokuapp.com/checkAccount");
 
-echo $res->getBody();
-*/
+function addAccount(Client $client)
+{
+    echo "\r\nNom à associer au compte : ";
+    $handle = fopen ("php://stdin","r");
+    $lastname = fgets($handle);
+
+    echo "\r\nPrenom : ";
+    $handle = fopen ("php://stdin","r");
+    $firstname = fgets($handle);
+
+    echo "\r\nMontant sur le compte : ";
+    $handle = fopen ("php://stdin","r");
+    $amount = fgets($handle);
+
+    $lastname = cleanStdinString($lastname);
+    $firstname = cleanStdinString($firstname);
+    $amount = cleanStdinString($amount);
 
 
+    echo "\r\nCreation du compte...";
+    $client->request("POST", "https://account-manager-dot-inf63app8.appspot.com/accounts/add", ["json" => [
+        "lastname" => $lastname,
+        "firstname" => $firstname,
+        "account" => $amount
+    ]]);
+}
 
+function askLoan(Client $client) 
+{
+    echo "\r\nNom associé au compte : ";
+    $handle = fopen ("php://stdin","r");
+    $name = fgets($handle);
+
+    echo "\r\nMontant : ";
+    $handle = fopen ("php://stdin","r");
+    $amount = fgets($handle);
+
+    $name = cleanStdinString($name);
+    $amount = cleanStdinString($amount);
+
+    echo "\r\nDemande en cours de traitement...";
+    $uri = sprintf("https://vivetgravier-loan-approval.herokuapp.com/loanApproval?name=%s&value=%s", $name, $amount);
+    $res = $client->request('GET', $uri);
+    echo sprintf("Reponse : %s", $res->getBody());
+}
+
+function deleteAccount(Client $client)
+{
+    echo "\r\nNom associé au compte à supprimer : ";
+    $handle = fopen ("php://stdin","r");
+    $name = fgets($handle);
+    $choice = -1;
+
+    $name = cleanStdinString($name);
+
+    while (!($choice == 0 || $choice == 1)) {
+        echo sprintf("Etes-vous sur de vouloir supprimer le compte de %s (1 = oui / 0 = non)", $name);
+        $handle = fopen ("php://stdin","r");
+        $choice = fgets($handle);
+    }
+
+    if ($choice == 1) {
+        echo sprintf("\r\nSuppression du compte de %s...", $name);
+        $uriDeleteAccount = sprintf("https://account-manager-dot-inf63app8.appspot.com/accounts/delete?lastname=%s", $name);
+        $client->request('GET', $uriDeleteAccount);
+        echo sprintf("\r\nLe compte a été supprimé");
+    }
+
+    if ($choice == 0) {
+        echo sprintf("\r\nAbandon de la suppression");
+    }
+}
+
+function cleanStdinString(string $string) :string
+{
+    return preg_replace("/\r|\n|\r\n/", "", $string);
+}
 
 ?>
