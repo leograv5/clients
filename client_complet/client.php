@@ -108,12 +108,16 @@ function addAccount(Client $client)
     $amount = cleanStdinString($amount);
 
 
-    echo "\r\nCreation du compte...";
-    $client->request("POST", "https://account-manager-dot-inf63app8.appspot.com/accounts/add", ["json" => [
-        "lastname" => $lastname,
-        "firstname" => $firstname,
-        "account" => $amount
-    ]]);
+    echo "\r\nCreation du compte...\r\n";
+    try {
+        $client->request("POST", "https://account-manager-dot-inf63app8.appspot.com/accounts/add", ["json" => [
+            "lastname" => $lastname,
+            "firstname" => $firstname,
+            "account" => $amount
+        ]]);
+    } catch (Exception $e) {
+        echo "\r\nLe compte existe déjà\r\n";
+    }
 }
 
 function askLoan(Client $client) 
@@ -129,10 +133,10 @@ function askLoan(Client $client)
     $name = cleanStdinString($name);
     $amount = cleanStdinString($amount);
 
-    echo "\r\nDemande en cours de traitement...";
+    echo "\r\nDemande en cours de traitement...\r\n";
     $uri = sprintf("https://vivetgravier-loan-approval.herokuapp.com/loanApproval?name=%s&value=%s", $name, $amount);
     $res = $client->request('GET', $uri);
-    echo sprintf("Reponse : %s", $res->getBody());
+    echo sprintf("\r\nReponse : %s", $res->getBody());
 }
 
 function deleteAccount(Client $client)
@@ -151,10 +155,14 @@ function deleteAccount(Client $client)
     }
 
     if ($choice == 1) {
-        echo sprintf("\r\nSuppression du compte de %s...", $name);
+        echo sprintf("\r\nSuppression du compte de %s...\r\n", $name);
         $uriDeleteAccount = sprintf("https://account-manager-dot-inf63app8.appspot.com/accounts/delete?lastname=%s", $name);
-        $client->request('GET', $uriDeleteAccount);
-        echo sprintf("\r\nLe compte a été supprimé");
+        try {
+            $client->request('GET', $uriDeleteAccount);
+            echo sprintf("\r\nLe compte a été supprimé");
+        } catch (Exception $e) {
+            echo "\r\nLe compte à supprimer n'existe pas !\r\n";
+        }
     }
 
     if ($choice == 0) {
